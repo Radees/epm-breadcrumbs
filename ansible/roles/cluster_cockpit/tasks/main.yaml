@@ -1,0 +1,91 @@
+---
+- name: >-
+    Allow the flexiadmin user to run sudo ALL
+    and a password is not required
+  community.general.sudoers:
+    name: flexiadmin
+    user: flexiadmin
+    commands: ALL
+    nopassword: true
+  become: true
+  become_user: root
+
+- name: >-
+    Allow the flexilabinfra group to run sudo ALL
+    and a password is not required
+  community.general.sudoers:
+    name: flexilabinfra
+    group: flexilabinfra
+    commands: ALL
+    nopassword: true
+  become: true
+  become_user: root
+
+- name: Add additional apt source files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/apt/sources.list.d/
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  loop:
+    - eis-custom-lxgen.seli.gic.ericsson.se.list
+    - linbit-ubuntu-linbit-drbd9-stack-noble.sources
+  become: true
+  become_user: root
+
+- name: Add additional apt keys
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/apt/trusted.gpg.d/
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  loop:
+      - eiscustom.asc
+  become: true
+  become_user: root
+
+- name: Install a packages for COCKPIT service
+  ansible.builtin.apt:
+    update_cache: true
+    pkg:
+      - cockpit-system
+      - cockpit-tests
+      - cockpit-bridge
+      - cockpit-machines
+      - cockpit
+      - cockpit-ws
+      - cockpit-sosreport
+      - cockpit-doc
+      - cockpit-pcp
+      - cockpit-podman
+  become: true
+  become_user: root
+
+- name: Create a directory /etc/systemd/system/cockpit.socket.d if it does not exist
+  ansible.builtin.file:
+    path: /etc/systemd/system/cockpit.socket.d
+    state: directory
+    mode: '0755'
+  become: true
+  become_user: root
+  
+#- name: Deploy Listen file for COCKPIT
+#  ansible.builtin.template:
+#    src: listen.conf.j2 
+#    dest: /etc/systemd/system/cockpit.socket.d/listen.conf
+#    owner: root
+#    group: root
+#    mode: '0644'
+#  become: true
+#  become_user: root
+
+- name: Restart service COCKPIT, in all cases, also issue daemon-reload to pick up config changes
+  ansible.builtin.systemd:
+    state: restarted
+    daemon_reload: yes
+    name: cockpit.socket
+  become: true
+  become_user: root
+ 

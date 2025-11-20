@@ -1,0 +1,20 @@
+---
+# Pre-checks for cluster_drbd role
+
+- name: Check if running on supported OS
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+      - ansible_distribution_version is version('20.04', '>=')
+    fail_msg: "This role requires Ubuntu 20.04 or later"
+    success_msg: "Running on supported Ubuntu version"
+
+- name: Check for kernel DRBD module
+  ansible.builtin.command: modinfo drbd
+  register: drbd_module_check
+  failed_when: false
+  changed_when: false
+
+- name: Display DRBD module status
+  ansible.builtin.debug:
+    msg: "DRBD kernel module {{ 'found' if drbd_module_check.rc == 0 else 'not found - will be installed' }}"

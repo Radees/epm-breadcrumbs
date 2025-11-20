@@ -1,0 +1,53 @@
+---
+# Storage configuration tasks
+
+- name: Create physical volumes
+  community.general.lvg:
+    vg: "{{ cluster_storage_vg_name }}"
+    pvs: "{{ cluster_storage_pvs | join(',') }}"
+    state: present
+  when: cluster_storage_pvs | length > 0
+  tags:
+    - configure
+
+- name: Create thin pool
+  ansible.builtin.command: >
+    lvcreate -L {{ cluster_storage_pool_size }}
+    --thinpool {{ cluster_storage_thin_pool }}
+    --poolmetadatasize {{ cluster_storage_metadata_size }}
+    {{ cluster_storage_vg_name }}
+  when:
+    - vg_exists.rc == 0
+    - cluster_storage_pvs | length > 0
+  register: thinpool_create
+  failed_when: false
+  changed_when: thinpool_create.rc == 0
+  tags:
+    - configure
+
+- name: Configure thin pool auto-extension
+  ansible.builtin.lineinfile:
+    path: /etc/lvm/lvm.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    insertafter: "{{ item.after }}"
+  loop:
+    - regexp: '^\s*thin_pool_autoextend_threshold\s*='
+      line: "    thin_pool_autoextend_threshold = {{ cluster_storage_thinpool_autoextend_threshold }}"
+      after: 'activation {'
+    - regexp: '^\s*thin_pool_autoextend_percent\s*='
+      line: "    thin_pool_autoextend_percent = {{ cluster_storage_thinpool_autoextend_percent }}"
+      after: 'activation {'
+  notify: reload lvm configuration
+  tags:
+    - configure
+
+- name: Display storage configuration summary
+  ansible.builtin.debug:
+    msg:
+      - "Volume Group: {{ cluster_storage_vg_name }}"
+      - "Thin Pool: {{ cluster_storage_thin_pool }}"
+      - "Physical Volumes: {{ cluster_storage_pvs | join(', ') }}"
+  when: cluster_storage_pvs | length > 0
+  tags:
+    - configure

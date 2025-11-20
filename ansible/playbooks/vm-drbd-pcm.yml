@@ -1,0 +1,13 @@
+---
+# VM with DRBD storage Pacemaker configuration
+# Based on the provided playbook with FlexiClusters adaptations
+
+- name: Configure PCM resources for VMs with DRBD/LINSTOR storage
+  hosts: "{{ target_hosts | default('cluster_nodes') }}"
+  become: yes
+  vars_files:
+    - ../vars/vm_configs.yml
+  tasks:
+    # Include tasks from the original playbook
+    - name: Setup VM DRBD PCM resources
+      include_tasks: ../roles/pacemaker/tasks/vm_drbd_setup.yml

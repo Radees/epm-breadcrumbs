@@ -1,0 +1,35 @@
+network:
+  version: 2
+  ethernets:
+    eno7:
+      optional: true
+      dhcp4: false
+      dhcp6: false
+    eno8:
+      optional: true
+      dhcp4: false
+      dhcp6: false
+  bonds:
+    bond-mgmt:
+      interfaces:
+      - eno7
+      - eno8
+      parameters:
+        mode: active-backup
+      addresses:
+      - 10.236.146.164/27
+      routes:
+      - to: 0.0.0.0/0
+        metric: 50
+        via: 10.236.146.161
+      nameservers:
+        addresses:
+        - 10.221.16.10
+        - 10.221.16.11
+        search:
+        - sero.gic.ericsson.se
+        - seli.gic.ericsson.se
+        - gic.ericsson.se
+        - ericsson.se
+  vlans: {}
+  bridges: {}

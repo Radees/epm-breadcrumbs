@@ -1,0 +1,18 @@
+---
+# Default variables for cluster_drbd role
+
+# DRBD packages
+cluster_drbd_packages:
+  - drbd-utils
+  - drbd-module-$(uname -r)
+
+# DRBD protocol (A, B, or C)
+# C is recommended for high availability (synchronous replication)
+cluster_drbd_protocol: "C"
+
+# DRBD replication network (CIDR notation)
+cluster_drbd_replication_network: "192.168.0.0/24"
+
+# Note: DRBD resources are managed by LINSTOR
+# Manual DRBD configuration is not recommended
+cluster_drbd_managed_by_linstor: true

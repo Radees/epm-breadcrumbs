@@ -1,0 +1,62 @@
+# VM Discovery Report for {{ inventory_hostname }}
+          
+          **Generated**: {{ ansible_date_time.iso8601 }}  
+          **Cluster**: {{ group_names | select('match', '.*_cluster') | first | default('unknown') }}  
+          **Location**: {{ elocation | default('unknown') }}  
+          
+          ## Host Information
+          - **Hostname**: {{ inventory_hostname }}
+          - **IP Address**: {{ ansible_default_ipv4.address }}
+          - **OS**: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          - **Kernel**: {{ ansible_kernel }}
+          - **Architecture**: {{ ansible_architecture }}
+          - **Libvirt**: Available
+          
+          ## Virtual Machines Summary
+          - **Total VMs**: {{ discovered_vms | selectattr('host', 'equalto', inventory_hostname) | list | length }}
+          - **Running**: {{ discovered_vms | selectattr('host', 'equalto', inventory_hostname) | selectattr('state', 'equalto', 'running') | list | length }}
+          - **Stopped**: {{ discovered_vms | selectattr('host', 'equalto', inventory_hostname) | selectattr('state', 'ne', 'running') | list | length }}
+          - **Total Allocated Memory**: {{ (discovered_vms | selectattr('host', 'equalto', inventory_hostname) | selectattr('state', 'equalto', 'running') | map(attribute='memory_mb') | map('int') | sum) }} MB
+          - **Total Allocated vCPUs**: {{ (discovered_vms | selectattr('host', 'equalto', inventory_hostname) | selectattr('state', 'equalto', 'running') | map(attribute='vcpus') | map('int') | sum) }}
+          
+          {% for vm in discovered_vms | selectattr('host', 'equalto', inventory_hostname) %}
+          ## {{ vm.name }}
+          
+          ### Basic Information
+          - **State**: {{ vm.state }}
+          - **Autostart**: {{ vm.autostart }}
+          - **Has XML Config**: {{ vm.has_xml_config }}
+          
+          ### Resources
+          - **Memory**: {{ vm.memory_mb }} MB ({{ vm.memory_kb }} KB)
+          - **Max Memory**: {{ (vm.max_memory_kb | int / 1024) | round(0) | int }} MB
+          - **vCPUs**: {{ vm.vcpus }}
+          {% if vm.cpu_time_ns | int > 0 %}
+          - **CPU Time**: {{ (vm.cpu_time_ns | int / 1000000000) | round(2) }} seconds
+          {% endif %}
+          
+          ### Network
+          - **MAC Address**: {{ vm.mac_address }}
+          - **Bridge**: {{ vm.bridge }}
+          {% if vm.ip_address %}
+          - **IP Address**: {{ vm.ip_address }}
+          {% endif %}
+          
+          ### Storage
+          - **Disk Path**: {{ vm.disk_path }}
+          
+          ### Console Access
+          {% if vm.vnc_port %}
+          - **VNC Port**: {{ vm.vnc_port }}
+          - **VNC URL**: vnc://{{ ansible_default_ipv4.address }}:{{ vm.vnc_port }}
+          {% else %}
+          - **VNC**: Not available or VM not running
+          {% endif %}
+          
+          ### Detailed Info (from libvirt)
+          ```yaml
+          {{ vm.info | to_nice_yaml }}
+          ```
+          
+          {% endfor %}
+

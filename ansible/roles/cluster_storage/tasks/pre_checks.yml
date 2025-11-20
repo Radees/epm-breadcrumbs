@@ -1,0 +1,39 @@
+---
+# Pre-checks for cluster_storage role
+
+- name: Check if running on supported OS
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+      - ansible_distribution_version is version('20.04', '>=')
+    fail_msg: "This role requires Ubuntu 20.04 or later"
+    success_msg: "Running on supported Ubuntu version"
+  tags:
+    - pre_checks
+
+- name: Verify physical volumes exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ cluster_storage_pvs }}"
+  register: pv_check
+  when: cluster_storage_pvs | length > 0
+  tags:
+    - pre_checks
+
+- name: Fail if physical volumes don't exist
+  ansible.builtin.fail:
+    msg: "Physical volume {{ item.item }} does not exist"
+  loop: "{{ pv_check.results }}"
+  when:
+    - cluster_storage_pvs | length > 0
+    - not item.stat.exists
+  tags:
+    - pre_checks
+
+- name: Check for existing volume group
+  ansible.builtin.command: vgs {{ cluster_storage_vg_name }}
+  register: vg_exists
+  failed_when: false
+  changed_when: false
+  tags:
+    - pre_checks

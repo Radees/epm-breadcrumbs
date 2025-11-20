@@ -1,0 +1,17 @@
+# /etc/systemd/system/nisedit-automount-dump.service
+# This systemd service file defines what will be executed when the timer triggers
+[Unit]
+Description=Dump NIS automount maps to local files
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'nisedit  -u gicinsadm@ericsson.se -k /root/vasinst.key dump -m auto.master > /etc/auto.master'
+ExecStart=/bin/bash -c 'nisedit  -u gicinsadm@ericsson.se -k /root/vasinst.key dump -m auto.home > /etc/auto.home'
+ExecStart=/bin/bash -c 'nisedit -u gicinsadm@ericsson.se -k /root/vasinst.key dump -m auto.proj > /etc/auto.proj'
+# Add more maps as needed with additional ExecStart lines
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

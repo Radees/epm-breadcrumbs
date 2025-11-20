@@ -1,0 +1,12 @@
+#/etc/opt/quest/vas
+# This file is being maintained by Puppet.
+# DO NOT EDIT
+# From site
+# IDM role: EC Linux - TA - Ericsson
+ERICSSON\idm-ecl-ta-linux
+# IDM role: EC Linux - TA - Ext SME
+ERICSSON\idm-ecl-ta-esme
+# From common
+# IDM role: GIC Production ADDM Scan (includes: eoaddm user)
+ERICSSON\IDM-22571agc8258
+ERICSSON\sharedflexilab

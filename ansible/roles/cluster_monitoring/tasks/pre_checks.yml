@@ -1,0 +1,20 @@
+---
+# Pre-checks for cluster_monitoring role
+
+- name: Check if running on supported OS
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+      - ansible_distribution_version is version('20.04', '>=')
+    fail_msg: "This role requires Ubuntu 20.04 or later"
+    success_msg: "Running on supported Ubuntu version"
+
+- name: Check available disk space for logs
+  ansible.builtin.shell: df -h /var/log | tail -1 | awk '{print $5}' | sed 's/%//'
+  register: log_disk_usage
+  changed_when: false
+
+- name: Warn if disk space is low
+  ansible.builtin.debug:
+    msg: "WARNING: /var/log is {{ log_disk_usage.stdout }}% full"
+  when: log_disk_usage.stdout | int > 80

@@ -1,0 +1,7 @@
+---
+# Handlers for cluster_drbd role
+
+- name: reload drbd configuration
+  ansible.builtin.command: drbdadm adjust all
+  failed_when: false
+  changed_when: false

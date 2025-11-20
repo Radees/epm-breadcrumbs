@@ -1,0 +1,16 @@
+#SPDX-License-Identifier: MIT-0
+---
+# System configuration tasks
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ cluster_base_timezone }}"
+  notify: update timezone
+
+- name: Install common packages
+  ansible.builtin.apt:
+    name: "{{ cluster_base_common_packages }}"
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+  when: cluster_base_common_packages | length > 0

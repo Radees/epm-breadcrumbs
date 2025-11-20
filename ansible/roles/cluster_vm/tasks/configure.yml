@@ -1,0 +1,41 @@
+---
+# Libvirt configuration tasks
+
+- name: Enable nested virtualization (Intel)
+  ansible.builtin.lineinfile:
+    path: /etc/modprobe.d/kvm-intel.conf
+    line: 'options kvm_intel nested=1'
+    create: yes
+  when:
+    - cluster_vm_nested_virt | bool
+    - ansible_processor | select('search', 'Intel') | list | length > 0
+  notify: reload kvm modules
+
+- name: Enable nested virtualization (AMD)
+  ansible.builtin.lineinfile:
+    path: /etc/modprobe.d/kvm-amd.conf
+    line: 'options kvm_amd nested=1'
+    create: yes
+  when:
+    - cluster_vm_nested_virt | bool
+    - ansible_processor | select('search', 'AMD') | list | length > 0
+  notify: reload kvm modules
+
+- name: Create VM storage directory
+  ansible.builtin.file:
+    path: "{{ cluster_vm_storage_path }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Check libvirt default pool
+  community.libvirt.virt_pool:
+    command: info
+    name: "{{ cluster_vm_default_pool }}"
+  register: default_pool
+  failed_when: false
+
+- name: Display libvirt status
+  ansible.builtin.debug:
+    msg: "Libvirt is configured and running. VMs are managed by Pacemaker."

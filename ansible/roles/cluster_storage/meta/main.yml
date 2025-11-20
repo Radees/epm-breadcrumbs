@@ -1,0 +1,24 @@
+---
+# Meta information for cluster_storage role
+
+galaxy_info:
+  role_name: cluster_storage
+  author: FlexiCluster Team
+  description: Manages LVM storage and thin pools for FlexiCluster
+  company: Ericsson
+  license: MIT-0
+  min_ansible_version: "2.7"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+  galaxy_tags:
+    - cluster
+    - storage
+    - lvm
+    - thinpool
+
+dependencies:
+  - role: cluster_base

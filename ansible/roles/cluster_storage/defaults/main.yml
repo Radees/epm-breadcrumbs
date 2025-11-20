@@ -1,0 +1,30 @@
+---
+# Default variables for cluster_storage role
+
+# Storage configuration
+cluster_storage_vg_name: "vg_storage"
+cluster_storage_lv_name: "lv_thinpool"
+cluster_storage_thin_pool: "thinpool"
+cluster_storage_pool_size: "100%FREE"
+cluster_storage_metadata_size: "1%VG"
+
+# Physical volumes
+cluster_storage_pvs: []
+  # - /dev/sdb
+  # - /dev/sdc
+
+# Logical volume thin pool settings
+cluster_storage_thinpool_autoextend_threshold: 80
+cluster_storage_thinpool_autoextend_percent: 20
+
+# Monitoring thresholds
+cluster_storage_alert_data_percent: 75
+cluster_storage_alert_metadata_percent: 50
+
+# Package requirements
+cluster_storage_packages:
+  - lvm2
+  - thin-provisioning-tools
+
+# Enable storage monitoring
+cluster_storage_enable_monitoring: true

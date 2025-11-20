@@ -1,0 +1,74 @@
+network:
+  version: 2
+  renderer: networkd
+
+  ethernets:
+    {% for i in range(8) %}
+    eth{{ i }}:
+      dhcp4: no
+      dhcp6: no
+    {% endfor %}
+
+  bonds:
+    {% for bond, iface_pair in bonds.items() %}
+    bond_{{ bond }}:
+      interfaces: [{{ iface_pair[0] }}, {{ iface_pair[1] }}]
+      parameters:
+        mode: 802.3ad
+        lacp-rate: fast
+        transmit-hash-policy: layer3+4
+      dhcp4: no
+      dhcp6: no
+    {% endfor %}
+
+  vlans:
+    {% for bond, vlan_list in vlans.items() %}
+      {% for vlan in vlan_list %}
+    vlan_{{ bond }}_{{ vlan['id'] }}:
+      id: {{ vlan['id'] }}
+      link: bond_{{ bond }}
+      dhcp4: no
+      dhcp6: no
+      addresses: [{{ vlan['ip'] }}/24]
+      {% endfor %}
+    {% endfor %}
+
+  bridges:
+    {% for bond, vlan_list in vlans.items() %}
+      {% for vlan in vlan_list %}
+    br_{{ bond }}_{{ vlan['id'] }}:
+      interfaces: [vlan_{{ bond }}_{{ vlan['id'] }}]
+      dhcp4: no
+      dhcp6: no
+      addresses: [{{ vlan['br_ip'] }}/24]
+      parameters:
+        stp: false
+        forward-delay: 0
+      {% endfor %}
+    {% endfor %}
+
+  routes:
+    - to: default
+      via: {{ gateways['mgmt'] }}
+      on-link: true
+      metric: 100
+      table: 100
+
+    {% for bond, gateway in gateways.items() %}
+      {% if bond != 'mgmt' %}
+    - to: default
+      via: {{ gateway }}
+      on-link: true
+      metric: 100
+      table: {{ routing_tables[bond] }}
+      {% endif %}
+    {% endfor %}
+
+  routing-policy:
+    {% for bond, subnet in subnets.items() %}
+      {% if bond != 'mgmt' %}
+    - from: {{ subnet }}
+      table: {{ routing_tables[bond] }}
+      {% endif %}
+    {% endfor %}
+

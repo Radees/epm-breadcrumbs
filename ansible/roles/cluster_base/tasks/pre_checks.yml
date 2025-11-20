@@ -1,0 +1,17 @@
+#SPDX-License-Identifier: MIT-0
+---
+# Pre-checks for cluster_base role
+
+- name: Check if running on Ubuntu
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+    fail_msg: "This role is designed for Ubuntu systems only"
+    success_msg: "Running on supported Ubuntu system"
+
+- name: Display system information
+  ansible.builtin.debug:
+    msg:
+      - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+      - "Hostname: {{ ansible_hostname }}"
+      - "Location: {{ cluster_base_location }}"

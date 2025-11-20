@@ -1,0 +1,26 @@
+---
+# Package installation for cluster_vm role
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install libvirt and KVM packages
+  ansible.builtin.apt:
+    name: "{{ cluster_vm_packages }}"
+    state: present
+
+- name: Add users to libvirt groups
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: libvirt,libvirt-qemu
+    append: yes
+  loop: "{{ cluster_vm_admin_users }}"
+  when: cluster_vm_admin_users | length > 0
+
+- name: Enable and start libvirtd service
+  ansible.builtin.systemd:
+    name: libvirtd
+    enabled: yes
+    state: started

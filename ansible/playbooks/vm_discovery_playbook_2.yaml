@@ -1,0 +1,560 @@
+---
+# VM Discovery and Inventory Generation Playbook
+# Uses community.libvirt.virt module instead of shell commands
+# vm_discovery.yml
+
+- name: Discover Virtual Machines across FlexiClusters
+  hosts: cluster_nodes
+  #become: yes
+  gather_facts: yes
+  vars:
+    discovery_output_dir: "./discovery_output"
+    timestamp: "{{ ansible_date_time.epoch }}"
+    
+  tasks:
+    - name: Ensure community.libvirt collection is available
+      fail:
+        msg: "Please install community.libvirt collection: ansible-galaxy collection install community.libvirt"
+      when: false  # Remove this check after collection is installed
+      tags: never
+
+    - name: Create discovery output directory (run once)
+      file:
+        path: "{{ discovery_output_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      run_once: true
+
+    - name: Get list of all VMs using virt module
+      community.libvirt.virt:
+        command: list_vms
+        #state: all
+      register: all_vms_result
+
+    - name: Display discovered VMs
+      debug:
+        msg: "Found {{ all_vms_result.list_vms | length }} VMs on {{ inventory_hostname }}: {{ all_vms_result.list_vms | join(', ') }}"
+
+    - name: Get detailed information for each VM
+      community.libvirt.virt:
+        command: info
+      register: vm_info_results
+      failed_when: false
+
+    - name: Get VM status for each VM
+      community.libvirt.virt:
+        command: status
+        name: "{{ item }}"
+      register: vm_status_results
+      loop: "{{ all_vms_result.list_vms }}"
+      failed_when: false
+
+    - name: Get VM XML configuration using virt command get_xml
+      community.libvirt.virt:
+        command: get_xml
+        name: "{{ item }}"
+      register: vm_configs_result
+      loop: "{{ all_vms_result.list_vms }}"
+      failed_when: false
+
+    - name: Get VM network information
+      community.libvirt.virt_net:
+        command: list_nets
+      register: vm_networks_result
+      failed_when: false
+
+    - name: Get autostart status for each VM
+      ansible.builtin.set_fact:
+        "{{ item }}" : "{{ item.autostart }}"
+      register: vm_autostart_results
+      loop: "{{ vm_info_results }}"
+      failed_when: false
+
+    - name: Parse network interfaces for running VMs
+      shell: |
+        if virsh domstate {{ item }} | grep -q "running"; then
+          virsh domifaddr {{ item }} --source lease 2>/dev/null | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -1 || echo ""
+        else
+          echo ""
+        fi
+      register: vm_ip_results
+      loop: "{{ all_vms_result.list_vms }}"
+      changed_when: false
+      failed_when: false
+
+    - name: Get VNC display information for running VMs
+      shell: |
+        if virsh domstate {{ item }} | grep -q "running"; then
+          virsh vncdisplay {{ item }} 2>/dev/null | sed 's/://' || echo ""
+        else
+          echo ""
+        fi
+      register: vm_vnc_results
+      loop: "{{ all_vms_result.list_vms }}"
+      changed_when: false
+      failed_when: false
+
+    - name: Parse VM storage information from XML
+      xml:
+        xmlstring: "{{ vm_configs_result.guests[item] | default('') }}"
+        xpath: "//disk[@type='file']/source"
+        content: attribute
+      register: vm_storage_xml
+      loop: "{{ all_vms_result.list_vms }}"
+      failed_when: false
+      when: vm_configs_result.guests is defined and vm_configs_result.guests[item] is defined
+
+    - name: Parse VM network information from XML
+      xml:
+        xmlstring: "{{ vm_configs_result.guests[item] | default('') }}"
+        xpath: "//interface/mac"
+        content: attribute
+      register: vm_network_xml
+      loop: "{{ all_vms_result.list_vms }}"
+      failed_when: false
+      when: vm_configs_result.guests is defined and vm_configs_result.guests[item] is defined
+
+    - name: Parse VM bridge information from XML
+      xml:
+        xmlstring: "{{ vm_configs_result.guests[item] | default('') }}"
+        xpath: "//interface/source"
+        content: attribute
+      register: vm_bridge_xml
+      loop: "{{ all_vms_result.list_vms }}"
+      failed_when: false
+      when: vm_configs_result.guests is defined and vm_configs_result.guests[item] is defined
+
+    - name: Create structured VM data
+      set_fact:
+        discovered_vms: "{{ discovered_vms | default([]) + [vm_data] }}"
+      vars:
+        vm_data:
+          name: "{{ item }}"
+          host: "{{ inventory_hostname }}"
+          cluster: "{{ group_names | select('match', '.*_cluster') | first | default('unknown') }}"
+          elocation: "{{ elocation | default('unknown') }}"
+          state: "{{ vm_status_results.results | selectattr('item', 'equalto', item) | map(attribute='status') | first | default('unknown') }}"
+          autostart: "{{ vm_autostart_results.results | selectattr('item', 'equalto', item) | map(attribute='autostart') | first | default(false) }}"
+          info: "{{ vm_info_results.results | selectattr('item', 'equalto', item) | map(attribute='info') | first | default({}) }}"
+          memory_mb: "{{ (vm_info_results.results | selectattr('item', 'equalto', item) | map(attribute='info') | first | default({})).get('memory', 0) | int // 1024 }}"
+          memory_kb: "{{ (vm_info_results.results | selectattr('item', 'equalto', item) | map(attribute='info') | first | default({})).get('memory', 0) | int }}"
+          vcpus: "{{ (vm_info_results.results | selectattr('item', 'equalto', item) | map(attribute='info') | first | default({})).get('nrVirtCpu', 0) | int }}"
+          max_memory_kb: "{{ (vm_info_results.results | selectattr('item', 'equalto', item) | map(attribute='info') | first | default({})).get('maxMem', 0) | int }}"
+          cpu_time_ns: "{{ (vm_info_results.results | selectattr('item', 'equalto', item) | map(attribute='info') | first | default({})).get('cpuTime', 0) | int }}"
+          mac_address: "{{ (vm_network_xml.results | selectattr('item', 'equalto', item) | map(attribute='matches') | first | default([{}]))[0].get('mac', {}).get('address', 'unknown') }}"
+          bridge: "{{ (vm_bridge_xml.results | selectattr('item', 'equalto', item) | map(attribute='matches') | first | default([{}]))[0].get('source', {}).get('bridge', 'unknown') }}"
+          disk_path: "{{ (vm_storage_xml.results | selectattr('item', 'equalto', item) | map(attribute='matches') | first | default([{}]))[0].get('source', {}).get('file', 'unknown') }}"
+          ip_address: "{{ vm_ip_results.results | selectattr('item', 'equalto', item) | map(attribute='stdout') | first | default('') }}"
+          vnc_port: "{{ vm_vnc_results.results | selectattr('item', 'equalto', item) | map(attribute='stdout') | first | default('') }}"
+          has_xml_config: "{{ vm_configs_result.guests is defined and vm_configs_result.guests[item] is defined }}"
+      loop: "{{ all_vms_result.list_vms }}"
+
+    - name: Generate VM discovery report for this host
+      template:
+        src: vm_discovery_report.j2
+        dest: "{{ discovery_output_dir }}/{{ inventory_hostname }}_vm_report_{{ timestamp }}.md"
+      delegate_to: localhost
+      when: discovered_vms is defined
+      vars:
+        template_content: |
+          # VM Discovery Report for {{ inventory_hostname }}
+          
+          **Generated**: {{ ansible_date_time.iso8601 }}  
+          **Cluster**: {{ group_names | select('match', '.*_cluster') | first | default('unknown') }}  
+          **Location**: {{ elocation | default('unknown') }}  
+          
+          ## Host Information
+          - **Hostname**: {{ inventory_hostname }}
+          - **IP Address**: {{ ansible_default_ipv4.address }}
+          - **OS**: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          - **Kernel**: {{ ansible_kernel }}
+          - **Architecture**: {{ ansible_architecture }}
+          - **Libvirt**: Available
+          
+          ## Virtual Machines Summary
+          - **Total VMs**: {{ discovered_vms | selectattr('host', 'equalto', inventory_hostname) | list | length }}
+          - **Running**: {{ discovered_vms | selectattr('host', 'equalto', inventory_hostname) | selectattr('state', 'equalto', 'running') | list | length }}
+          - **Stopped**: {{ discovered_vms | selectattr('host', 'equalto', inventory_hostname) | selectattr('state', 'ne', 'running') | list | length }}
+          - **Total Allocated Memory**: {{ (discovered_vms | selectattr('host', 'equalto', inventory_hostname) | selectattr('state', 'equalto', 'running') | map(attribute='memory_mb') | map('int') | sum) }} MB
+          - **Total Allocated vCPUs**: {{ (discovered_vms | selectattr('host', 'equalto', inventory_hostname) | selectattr('state', 'equalto', 'running') | map(attribute='vcpus') | map('int') | sum) }}
+          
+          {% for vm in discovered_vms | selectattr('host', 'equalto', inventory_hostname) %}
+          ## {{ vm.name }}
+          
+          ### Basic Information
+          - **State**: {{ vm.state }}
+          - **Autostart**: {{ vm.autostart }}
+          - **Has XML Config**: {{ vm.has_xml_config }}
+          
+          ### Resources
+          - **Memory**: {{ vm.memory_mb }} MB ({{ vm.memory_kb }} KB)
+          - **Max Memory**: {{ (vm.max_memory_kb | int / 1024) | round(0) | int }} MB
+          - **vCPUs**: {{ vm.vcpus }}
+          {% if vm.cpu_time_ns | int > 0 %}
+          - **CPU Time**: {{ (vm.cpu_time_ns | int / 1000000000) | round(2) }} seconds
+          {% endif %}
+          
+          ### Network
+          - **MAC Address**: {{ vm.mac_address }}
+          - **Bridge**: {{ vm.bridge }}
+          {% if vm.ip_address %}
+          - **IP Address**: {{ vm.ip_address }}
+          {% endif %}
+          
+          ### Storage
+          - **Disk Path**: {{ vm.disk_path }}
+          
+          ### Console Access
+          {% if vm.vnc_port %}
+          - **VNC Port**: {{ vm.vnc_port }}
+          - **VNC URL**: vnc://{{ ansible_default_ipv4.address }}:{{ vm.vnc_port }}
+          {% else %}
+          - **VNC**: Not available or VM not running
+          {% endif %}
+          
+          ### Detailed Info (from libvirt)
+          ```yaml
+          {{ vm.info | to_nice_yaml }}
+          ```
+          
+          {% endfor %}
+
+# Generate consolidated reports
+- name: Generate Consolidated VM Inventory and Reports
+  hosts: cluster_nodes
+  gather_facts: no
+  run_once: true
+  vars:
+    discovery_output_dir: "./discovery_output"
+    timestamp: "{{ ansible_date_time.epoch }}"
+    
+  tasks:
+    - name: Collect all discovered VMs from all hosts
+      set_fact:
+        all_discovered_vms: "{{ all_discovered_vms | default([]) + hostvars[item]['discovered_vms'] | default([]) }}"
+      loop: "{{ groups['cluster_nodes'] }}"
+
+    - name: Generate consolidated VM inventory in YAML format
+      copy:
+        content: |
+          ---
+          # FlexiClusters VM Discovery Results
+          # Generated: {{ ansible_date_time.iso8601 }}
+          # Discovery Method: community.libvirt.virt module
+          # Total VMs Found: {{ all_discovered_vms | length }}
+          
+          vm_discovery:
+            metadata:
+              discovery_method: "community.libvirt.virt"
+              timestamp: "{{ ansible_date_time.iso8601 }}"
+              epoch: {{ ansible_date_time.epoch }}
+              ansible_version: "{{ ansible_version.full }}"
+              
+            summary:
+              total_vms: {{ all_discovered_vms | length }}
+              sero_vms: {{ all_discovered_vms | selectattr('elocation', 'equalto', 'sero') | list | length }}
+              seli_vms: {{ all_discovered_vms | selectattr('elocation', 'equalto', 'seli') | list | length }}
+              running_vms: {{ all_discovered_vms | selectattr('state', 'equalto', 'running') | list | length }}
+              stopped_vms: {{ all_discovered_vms | selectattr('state', 'ne', 'running') | list | length }}
+              autostart_enabled: {{ all_discovered_vms | selectattr('autostart', 'equalto', true) | list | length }}
+              
+            resource_allocation:
+              total_memory_mb: {{ (all_discovered_vms | selectattr('state', 'equalto', 'running') | map(attribute='memory_mb') | map('int') | sum) }}
+              total_vcpus: {{ (all_discovered_vms | selectattr('state', 'equalto', 'running') | map(attribute='vcpus') | map('int') | sum) }}
+              largest_vm_memory_mb: {{ (all_discovered_vms | map(attribute='memory_mb') | map('int') | max) if all_discovered_vms else 0 }}
+              average_vm_memory_mb: {{ ((all_discovered_vms | map(attribute='memory_mb') | map('int') | sum) / (all_discovered_vms | length)) | round(0) | int if all_discovered_vms else 0 }}
+          
+            hosts:
+          {% for host in groups['cluster_nodes'] %}
+              {{ host }}:
+                cluster_info:
+                  cluster: {{ hostvars[host]['group_names'] | select('match', '.*_cluster') | first | default('unknown') }}
+                  elocation: {{ hostvars[host]['elocation'] | default('unknown') }}
+                  ip_address: {{ hostvars[host]['ansible_default_ipv4']['address'] | default('unknown') }}
+                  
+                vm_summary:
+                  total_vms: {{ all_discovered_vms | selectattr('host', 'equalto', host) | list | length }}
+                  running_vms: {{ all_discovered_vms | selectattr('host', 'equalto', host) | selectattr('state', 'equalto', 'running') | list | length }}
+                  memory_allocated_mb: {{ (all_discovered_vms | selectattr('host', 'equalto', host) | selectattr('state', 'equalto', 'running') | map(attribute='memory_mb') | map('int') | sum) }}
+                  vcpus_allocated: {{ (all_discovered_vms | selectattr('host', 'equalto', host) | selectattr('state', 'equalto', 'running') | map(attribute='vcpus') | map('int') | sum) }}
+                  
+                virtual_machines:
+          {% for vm in all_discovered_vms | selectattr('host', 'equalto', host) %}
+                  {{ vm.name }}:
+                    state: "{{ vm.state }}"
+                    autostart: {{ vm.autostart }}
+                    has_xml_config: {{ vm.has_xml_config }}
+                    resources:
+                      memory_mb: {{ vm.memory_mb }}
+                      memory_kb: {{ vm.memory_kb }}
+                      max_memory_kb: {{ vm.max_memory_kb }}
+                      vcpus: {{ vm.vcpus }}
+                      cpu_time_ns: {{ vm.cpu_time_ns }}
+                    network:
+                      mac_address: "{{ vm.mac_address }}"
+                      bridge: "{{ vm.bridge }}"
+                      ip_address: "{{ vm.ip_address if vm.ip_address else 'not_detected' }}"
+                    storage:
+                      disk_path: "{{ vm.disk_path }}"
+                    console:
+                      vnc_port: "{{ vm.vnc_port if vm.vnc_port else 'not_available' }}"
+                      {% if vm.vnc_port and hostvars[host]['ansible_default_ipv4'] is defined %}
+                      vnc_url: "vnc://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:{{ vm.vnc_port }}"
+                      {% endif %}
+                    libvirt_info: {{ vm.info | to_json }}
+          {% endfor %}
+          {% endfor %}
+        dest: "{{ discovery_output_dir }}/vm_inventory_{{ timestamp }}.yml"
+      delegate_to: localhost
+
+    - name: Generate Ansible-compatible inventory file
+      copy:
+        content: |
+          # Auto-generated VM inventory from libvirt discovery
+          # Generated: {{ ansible_date_time.iso8601 }}
+          # Method: community.libvirt.virt module
+          # Usage: ansible-playbook -i {{ discovery_output_dir }}/discovered_vms_inventory.yml playbook.yml
+          
+          ---
+          all:
+            children:
+              # Discovered VMs by location (running only)
+          {% for cluster in ['sero', 'seli'] %}
+              discovered_{{ cluster }}_vms:
+                hosts:
+          {% for vm in all_discovered_vms | selectattr('elocation', 'equalto', cluster) | selectattr('state', 'equalto', 'running') %}
+                  {{ vm.name }}:
+                    ansible_host: {{ vm.ip_address if vm.ip_address else '# IP_NOT_DETECTED' }}
+                    # VM Configuration from libvirt discovery
+                    vm_host_node: "{{ vm.host }}"
+                    vm_cluster: "{{ vm.cluster }}"
+                    vm_state: "{{ vm.state }}"
+                    vm_autostart: {{ vm.autostart }}
+                    vm_memory_mb: {{ vm.memory_mb }}
+                    vm_max_memory_mb: {{ (vm.max_memory_kb | int / 1024) | round(0) | int }}
+                    vm_vcpus: {{ vm.vcpus }}
+                    vm_mac_address: "{{ vm.mac_address }}"
+                    vm_bridge: "{{ vm.bridge }}"
+                    vm_disk_path: "{{ vm.disk_path }}"
+                    {% if vm.vnc_port %}
+                    vm_vnc_port: "{{ vm.vnc_port }}"
+                    vm_vnc_url: "vnc://{{ hostvars[vm.host]['ansible_default_ipv4']['address'] if hostvars[vm.host]['ansible_default_ipv4'] is defined else vm.host }}:{{ vm.vnc_port }}"
+                    {% endif %}
+                    vm_has_xml_config: {{ vm.has_xml_config }}
+          {% endfor %}
+                vars:
+                  elocation: "{{ cluster }}"
+                  vm_location: "{{ cluster }}"
+          {% endfor %}
+              
+              # All discovered VMs (including stopped)
+              all_discovered_vms:
+                hosts:
+          {% for vm in all_discovered_vms %}
+                  {{ vm.name }}:
+                    ansible_host: {{ vm.ip_address if vm.ip_address else '# VM_OFFLINE_OR_NO_IP' }}
+                    vm_state: "{{ vm.state }}"
+                    vm_autostart: {{ vm.autostart }}
+                    vm_host_node: "{{ vm.host }}"
+                    vm_elocation: "{{ vm.elocation }}"
+                    vm_cluster: "{{ vm.cluster }}"
+                    vm_memory_mb: {{ vm.memory_mb }}
+                    vm_vcpus: {{ vm.vcpus }}
+          {% endfor %}
+          
+              # VMs by state
+              running_vms:
+                hosts:
+          {% for vm in all_discovered_vms | selectattr('state', 'equalto', 'running') %}
+                  {{ vm.name }}:
+                    ansible_host: {{ vm.ip_address if vm.ip_address else '# RUNNING_BUT_NO_IP' }}
+          {% endfor %}
+                vars:
+                  vm_state_filter: "running"
+                  
+              stopped_vms:
+                hosts:
+          {% for vm in all_discovered_vms | selectattr('state', 'ne', 'running') %}
+                  {{ vm.name }}:
+                    ansible_host: "# VM_NOT_RUNNING"
+                    vm_state: "{{ vm.state }}"
+          {% endfor %}
+                vars:
+                  vm_state_filter: "stopped"
+          
+            vars:
+              ansible_user: ubuntu
+              ansible_ssh_private_key_file: ~/.ssh/cluster_key
+              ansible_python_interpreter: /usr/bin/python3
+              ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ConnectTimeout=10'
+              # Discovered via community.libvirt.virt module
+              discovery_method: "libvirt_module"
+              discovery_timestamp: "{{ ansible_date_time.iso8601 }}"
+        dest: "{{ discovery_output_dir }}/discovered_vms_inventory.yml"
+      delegate_to: localhost
+
+    - name: Generate summary report with enhanced libvirt data
+      copy:
+        content: |
+          # FlexiClusters VM Discovery Summary
+          
+          **Generated**: {{ ansible_date_time.iso8601 }}  
+          **Method**: community.libvirt.virt module  
+          **Ansible Version**: {{ ansible_version.full }}  
+          
+          ## 📊 Overview
+          
+          | Metric | Count |
+          |--------|-------|
+          | **Total VMs Discovered** | {{ all_discovered_vms | length }} |
+          | **SERO VMs** | {{ all_discovered_vms | selectattr('elocation', 'equalto', 'sero') | list | length }} |
+          | **SELI VMs** | {{ all_discovered_vms | selectattr('elocation', 'equalto', 'seli') | list | length }} |
+          | **Running VMs** | {{ all_discovered_vms | selectattr('state', 'equalto', 'running') | list | length }} |
+          | **Stopped VMs** | {{ all_discovered_vms | selectattr('state', 'ne', 'running') | list | length }} |
+          | **Autostart Enabled** | {{ all_discovered_vms | selectattr('autostart', 'equalto', true) | list | length }} |
+          
+          ## 💾 Resource Allocation
+          
+          | Resource | Usage |
+          |----------|-------|
+          | **Total Allocated Memory** | {{ (all_discovered_vms | selectattr('state', 'equalto', 'running') | map(attribute='memory_mb') | map('int') | sum) }} MB |
+          | **Total Allocated vCPUs** | {{ (all_discovered_vms | selectattr('state', 'equalto', 'running') | map(attribute='vcpus') | map('int') | sum) }} |
+          | **Largest VM** | {{ (all_discovered_vms | map(attribute='memory_mb') | map('int') | max) if all_discovered_vms else 0 }} MB |
+          | **Average VM Size** | {{ ((all_discovered_vms | map(attribute='memory_mb') | map('int') | sum) / (all_discovered_vms | length)) | round(0) | int if all_discovered_vms else 0 }} MB |
+          
+          ## 🖥️ VM Distribution by Host
+          
+          {% for host in groups['cluster_nodes'] %}
+          ### {{ host }} ({{ hostvars[host]['elocation'] | default('unknown') | upper }})
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Total VMs** | {{ all_discovered_vms | selectattr('host', 'equalto', host) | list | length }} |
+          | **Running** | {{ all_discovered_vms | selectattr('host', 'equalto', host) | selectattr('state', 'equalto', 'running') | list | length }} |
+          | **Stopped** | {{ all_discovered_vms | selectattr('host', 'equalto', host) | selectattr('state', 'ne', 'running') | list | length }} |
+          | **Memory Used** | {{ (all_discovered_vms | selectattr('host', 'equalto', host) | selectattr('state', 'equalto', 'running') | map(attribute='memory_mb') | map('int') | sum) }} MB |
+          | **vCPUs Used** | {{ (all_discovered_vms | selectattr('host', 'equalto', host) | selectattr('state', 'equalto', 'running') | map(attribute='vcpus') | map('int') | sum) }} |
+          | **Host IP** | {{ hostvars[host]['ansible_default_ipv4']['address'] | default('unknown') }} |
+          
+          {% endfor %}
+          
+          ## 🔧 Virtual Machine Details
+          
+          {% for vm in all_discovered_vms | sort(attribute='name') %}
+          ### {{ vm.name }} {% if vm.state == 'running' %}🟢{% else %}🔴{% endif %}
+          
+          | Property | Value |
+          |----------|-------|
+          | **Location** | {{ vm.elocation | upper }} ({{ vm.host }}) |
+          | **State** | {{ vm.state }} |
+          | **Autostart** | {{ '✅' if vm.autostart else '❌' }} |
+          | **Memory** | {{ vm.memory_mb }} MB {% if vm.max_memory_kb != vm.memory_kb %}(Max: {{ (vm.max_memory_kb / 1024) | round(0) | int }} MB){% endif %} |
+          | **vCPUs** | {{ vm.vcpus }} |
+          | **MAC** | `{{ vm.mac_address }}` |
+          | **Bridge** | {{ vm.bridge }} |
+          | **IP Address** | {{ vm.ip_address if vm.ip_address else '*Not detected*' }} |
+          | **Disk** | `{{ vm.disk_path }}` |
+          {% if vm.vnc_port and vm.state == 'running' %}
+          | **VNC** | Port {{ vm.vnc_port }} ([Connect](vnc://{{ hostvars[vm.host]['ansible_default_ipv4']['address'] if hostvars[vm.host]['ansible_default_ipv4'] is defined else vm.host }}:{{ vm.vnc_port }})) |
+          {% endif %}
+          | **Config Available** | {{ '✅' if vm.has_xml_config else '❌' }} |
+          
+          {% endfor %}
+          
+          ## 🚀 Usage Examples
+          
+          ### Basic VM Management
+          ```bash
+          # Test connectivity to all discovered running VMs
+          ansible running_vms -i {{ discovery_output_dir }}/discovered_vms_inventory.yml -m ping
+          
+          # Check uptime of SERO VMs
+          ansible discovered_sero_vms -i {{ discovery_output_dir }}/discovered_vms_inventory.yml -m shell -a "uptime"
+          
+          # Get memory usage from SELI VMs
+          ansible discovered_seli_vms -i {{ discovery_output_dir }}/discovered_vms_inventory.yml -m shell -a "free -h"
+          
+          # Run commands only on running VMs
+          ansible all_discovered_vms -i {{ discovery_output_dir }}/discovered_vms_inventory.yml -m shell -a "hostname" --limit "running_vms"
+          ```
+          
+          ### Advanced Targeting
+          ```bash
+          # Target VMs by memory size (example: >2GB)
+          ansible all_discovered_vms -i {{ discovery_output_dir }}/discovered_vms_inventory.yml -m debug -a "var=inventory_hostname" --limit "vm_memory_mb_>=_2048"
+          
+          # Target VMs with autostart enabled
+          ansible all_discovered_vms -i {{ discovery_output_dir }}/discovered_vms_inventory.yml -m debug -a "var=vm_autostart" --limit "vm_autostart_==_True"
+          
+          # Check specific VM state using libvirt module
+          ansible cluster_nodes -m community.libvirt.virt -a "command=status name=vm01"
+          ```
+          
+          ### VM Operations using libvirt module
+          ```bash
+          # Start stopped VMs
+          ansible cluster_nodes -m community.libvirt.virt -a "name=vm01 state=running"
+          
+          # Get VM info
+          ansible cluster_nodes -m community.libvirt.virt -a "command=info name=vm01"
+          
+          # Enable autostart for VM
+          ansible cluster_nodes -m community.libvirt.virt -a "name=vm01 autostart=yes"
+          ```
+          
+          ## 📁 Generated Files
+          
+          | File | Description |
+          |------|-------------|
+          | `{{ discovery_output_dir }}/vm_inventory_{{ timestamp }}.yml` | Complete discovery data with libvirt info |
+          | `{{ discovery_output_dir }}/discovered_vms_inventory.yml` | Ready-to-use Ansible inventory |
+          | `{{ discovery_output_dir }}/discovery_summary_{{ timestamp }}.md` | This summary report |
+          | `{{ discovery_output_dir }}/*_vm_report_{{ timestamp }}.md` | Per-host detailed reports |
+          
+          ---
+          *Discovery completed using community.libvirt.virt module at {{ ansible_date_time.iso8601 }}*
+        dest: "{{ discovery_output_dir }}/discovery_summary_{{ timestamp }}.md"
+      delegate_to: localhost
+
+    - name: Display enhanced discovery summary
+      debug:
+        msg: |
+          
+          ===============================================
+          FlexiClusters VM Discovery Complete! 🚀
+          ===============================================
+          
+          📊 SUMMARY:
+          - Discovery Method: community.libvirt.virt module
+          - Total VMs found: {{ all_discovered_vms | length }}
+          - SERO VMs: {{ all_discovered_vms | selectattr('elocation', 'equalto', 'sero') | list | length }}
+          - SELI VMs: {{ all_discovered_vms | selectattr('elocation', 'equalto', 'seli') | list | length }}
+          - Running VMs: {{ all_discovered_vms | selectattr('state', 'equalto', 'running') | list | length }}
+          - Total Memory: {{ (all_discovered_vms | selectattr('state', 'equalto', 'running') | map(attribute='memory_mb') | map('int') | sum) }} MB
+          - Total vCPUs: {{ (all_discovered_vms | selectattr('state', 'equalto', 'running') | map(attribute='vcpus') | map('int') | sum) }}
+          
+          📁 OUTPUT FILES:
+          - Full inventory: {{ discovery_output_dir }}/vm_inventory_{{ timestamp }}.yml
+          - Ansible inventory: {{ discovery_output_dir }}/discovered_vms_inventory.yml
+          - Summary report: {{ discovery_output_dir }}/discovery_summary_{{ timestamp }}.md
+          - Host reports: {{ discovery_output_dir }}/*_vm_report_{{ timestamp }}.md
+          
+          🔧 QUICK TESTS:
+          # Test running VMs connectivity:
+          ansible running_vms -i {{ discovery_output_dir }}/discovered_vms_inventory.yml -m ping
+          
+          # Get VM status using libvirt module:
+          ansible cluster_nodes -m community.libvirt.virt -a "command=list_vms state=running"
+          
+          # Check specific VM info:
+          ansible cluster_nodes -m community.libvirt.virt -a "command=info name=<vm_name>"
+          
+          💡 LIBVIRT MODULE ADVANTAGES:
+          ✅ Idempotent operations
+          ✅ Structured data output
+          ✅ Better error handling
+          ✅ No shell command dependencies
+          ✅ Ansible-native approach
+          
+          ===============================================

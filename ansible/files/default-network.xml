@@ -1,0 +1,7 @@
+<network>
+  <name>default</name>
+  <forward mode='bridge'/>
+  <bridge name='br-gic317'/>
+  <dns enable='no'/>
+</network>
+

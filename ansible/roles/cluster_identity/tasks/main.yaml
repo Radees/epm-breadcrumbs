@@ -1,0 +1,109 @@
+---
+- name: Add additional apt source files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/apt/sources.list.d/
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  loop:
+    - eis-custom-lxgen.seli.gic.ericsson.se.list
+  become: true
+  become_user: root
+
+- name: Add additional apt keys
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/apt/trusted.gpg.d/
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  loop:
+      - eiscustom.asc
+  become: true
+  become_user: root
+
+- name: Install a packages for AD auth
+  ansible.builtin.apt:
+    update_cache: true
+    pkg:
+      - krb5-config
+      - vasclnt
+      - vasyp  
+      - nfs-common
+      - autofs
+      - autofs-ldap
+  become: true
+  become_user: root
+
+- name: Start service vasd and issue daemon-reload
+  ansible.builtin.systemd:
+    state: started
+    daemon_reload: yes
+    name: vasd
+  become: true
+  become_user: root
+ 
+- name: Start service vasypd and issue daemon-reload
+  ansible.builtin.systemd:
+    state: started
+    daemon_reload: yes
+    name: vasypd
+  become: true
+  become_user: root
+
+- name: Link vastool to /usr/bin
+  ansible.builtin.file:
+    path: /usr/bin/vastool
+    src: /opt/quest/bin/vastool  
+    state: link  
+  become: true
+  become_user: root
+
+- name: Link nisedit to /usr/bin
+  ansible.builtin.file:
+    path: /usr/bin/nisedit
+    src: /opt/quest/bin/nisedit  
+    state: link  
+  become: true
+  become_user: root
+
+- name: Copy key for server registration to AD
+  ansible.builtin.copy:
+    src: vasinst.key 
+    dest: /root/
+  become: true
+  become_user: root
+
+- name: Register the machine to One Identity AD
+  ansible.builtin.command: "{{ lookup('ansible.builtin.template', 'vas-join-cmd.j2') }}" 
+  args:
+    creates: /etc/opt/quest/vas/host.keytab
+    chdir: /opt/quest/bin
+  register: vastool_result
+  failed_when: vastool_result.rc != 0 and "already joined" not in vastool_result.stderr
+  changed_when: vastool_result.rc == 0
+  no_log: true  
+  become: true
+  become_user: root
+
+- name: Limit access to machine for flexilabinfra group
+  ansible.builtin.copy:
+    src:  "{{ item }}"
+    dest: /etc/opt/quest/vas/
+  become: true
+  become_user: root
+  loop:
+    - users.allow
+    - users.deny  
+
+- name: Copy vas.conf by template 
+  ansible.builtin.template:
+    src: vas.conf
+    dest: /etc/opt/quest/vas/
+    backup: true  
+  become: true
+  become_user: root
+
+- name: Include autofs installation tasks
+  include_tasks: 'autofs.yaml'      

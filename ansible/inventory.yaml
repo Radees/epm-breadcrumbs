@@ -1,0 +1,324 @@
+---
+# FlexiClusters Ansible Inventory - Real VM Discovery Results
+# Based on actual VMs discovered on cluster nodes
+# inventory.yml
+
+all:
+  children:
+    # Physical cluster nodes
+    cluster_nodes:
+      children:
+        sero_cluster:
+          hosts:
+            seroics02744:
+              ansible_host: 192.168.10.11
+              cluster_role: primary
+              preferred_resources:
+                - "seroicvm01492_2"
+                - "D12_test"
+                - "seroicvm01488_vm"
+                - "cck-r1-t1"
+                - "seroius12382_vm"
+                - "seroius00321_vm"
+              linstor_role: satellite
+
+            seroics95861:
+              ansible_host: 192.168.10.12
+              cluster_role: secondary
+              preferred_resources:
+                - "ubuntu-jammy-tpl"
+                - "seroius15014"
+                - "seroicvm01492_vm"
+                - "seroicvm23403_vm"
+                - "cck-r2-t1"
+                - "ubuntu-noble-tpl"
+              linstor_role: controller
+
+          vars:
+            elocation: "sero"
+            cluster_name: "sero-cluster"
+            cluster_vip: "192.168.10.10"
+            cluster_vip_cidr: "24"
+            cluster_interface: "eth0"
+            linstor_controller: "192.168.10.11:3370"
+            storage_pool: "thinpool"
+            resource_group: "ssd_pool"
+
+        seli_cluster:
+          hosts:
+            seliics02058:
+              ansible_host: 192.168.20.11
+              cluster_role: primary
+              preferred_resources: []  # No VMs discovered on this node
+              linstor_role: satellite
+
+            seliics02501:
+              ansible_host: 192.168.20.12
+              cluster_role: secondary
+              preferred_resources:
+                - "seliicvm01767_vm"
+                - "seliius30745_vm"
+                - "seliicvm01769_vm"
+                - "seliius20743_vm"
+                - "seliius20740_vm"
+                - "seliicvm01755_vm"
+                - "seliius20741_vm"
+                - "AMP_vm"
+              linstor_role: controller
+
+          vars:
+            elocation: "seli"
+            cluster_name: "seli-cluster"
+            cluster_vip: "192.168.20.10"
+            cluster_vip_cidr: "24"
+            cluster_interface: "eth0"
+            linstor_controller: "192.168.20.11:3370"
+            storage_pool: "thinpool"
+            resource_group: "ssd_pool"
+
+    # Virtual machines running on clusters
+    virtual_machines:
+      children:
+        sero_vms:
+          hosts:
+            # VMs on seroics02744
+            seroicvm01492_2:
+              ansible_host: "192.168.10.101"  # To be discovered
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics02744"
+              vm_current_node: "seroics02744"
+              vm_type: "production"
+
+            D12_test:
+              ansible_host: "192.168.10.102"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics02744"
+              vm_current_node: "seroics02744"
+              vm_type: "test"
+
+            seroicvm01488_vm:
+              ansible_host: "192.168.10.103"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics02744"
+              vm_current_node: "seroics02744"
+              vm_type: "production"
+
+            cck-r1-t1:
+              ansible_host: "192.168.10.104"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics02744"
+              vm_current_node: "seroics02744"
+              vm_type: "cockpit"
+
+            seroius12382_vm:
+              ansible_host: "192.168.10.105"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics02744"
+              vm_current_node: "seroics02744"
+              vm_type: "production"
+
+            seroius00321_vm:
+              ansible_host: "192.168.10.106"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics02744"
+              vm_current_node: "seroics02744"
+              vm_type: "production"
+
+            # VMs on seroics95861
+            ubuntu-jammy-tpl:
+              ansible_host: "192.168.10.111"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics95861"
+              vm_current_node: "seroics95861"
+              vm_type: "template"
+
+            seroius15014:
+              ansible_host: "192.168.10.112"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics95861"
+              vm_current_node: "seroics95861"
+              vm_type: "production"
+
+            seroicvm01492_vm:
+              ansible_host: "192.168.10.113"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics95861"
+              vm_current_node: "seroics95861"
+              vm_type: "production"
+
+            seroicvm23403_vm:
+              ansible_host: "192.168.10.114"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics95861"
+              vm_current_node: "seroics95861"
+              vm_type: "production"
+
+            cck-r2-t1:
+              ansible_host: "192.168.10.115"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics95861"
+              vm_current_node: "seroics95861"
+              vm_type: "cockpit"
+
+            ubuntu-noble-tpl:
+              ansible_host: "192.168.10.116"
+              vm_host_cluster: "sero_cluster"
+              vm_preferred_node: "seroics95861"
+              vm_current_node: "seroics95861"
+              vm_type: "template"
+
+          vars:
+            elocation: "sero"
+            vm_network_bridge: "br0"
+            vm_network_segment: "192.168.10.0/24"
+            vm_gateway: "192.168.10.1"
+            vm_dns_servers: ["192.168.10.1", "8.8.8.8"]
+
+        seli_vms:
+          hosts:
+            # All VMs on seliics02501 (seliics02058 has no VMs)
+            seliicvm01767_vm:
+              ansible_host: "192.168.20.101"
+              vm_host_cluster: "seli_cluster"
+              vm_preferred_node: "seliics02501"
+              vm_current_node: "seliics02501"
+              vm_type: "production"
+
+            seliius30745_vm:
+              ansible_host: "192.168.20.102"
+              vm_host_cluster: "seli_cluster"
+              vm_preferred_node: "seliics02501"
+              vm_current_node: "seliics02501"
+              vm_type: "production"
+
+            seliicvm01769_vm:
+              ansible_host: "192.168.20.103"
+              vm_host_cluster: "seli_cluster"
+              vm_preferred_node: "seliics02501"
+              vm_current_node: "seliics02501"
+              vm_type: "production"
+
+            seliius20743_vm:
+              ansible_host: "192.168.20.104"
+              vm_host_cluster: "seli_cluster"
+              vm_preferred_node: "seliics02501"
+              vm_current_node: "seliics02501"
+              vm_type: "production"
+
+            seliius20740_vm:
+              ansible_host: "192.168.20.105"
+              vm_host_cluster: "seli_cluster"
+              vm_preferred_node: "seliics02501"
+              vm_current_node: "seliics02501"
+              vm_type: "production"
+
+            seliicvm01755_vm:
+              ansible_host: "192.168.20.106"
+              vm_host_cluster: "seli_cluster"
+              vm_preferred_node: "seliics02501"
+              vm_current_node: "seliics02501"
+              vm_type: "production"
+
+            seliius20741_vm:
+              ansible_host: "192.168.20.107"
+              vm_host_cluster: "seli_cluster"
+              vm_preferred_node: "seliics02501"
+              vm_current_node: "seliics02501"
+              vm_type: "production"
+
+            AMP_vm:
+              ansible_host: "192.168.20.108"
+              vm_host_cluster: "seli_cluster"
+              vm_preferred_node: "seliics02501"
+              vm_current_node: "seliics02501"
+              vm_type: "application"
+
+          vars:
+            elocation: "seli"
+            vm_network_bridge: "br0"
+            vm_network_segment: "192.168.20.0/24"
+            vm_gateway: "192.168.20.1"
+            vm_dns_servers: ["192.168.20.1", "8.8.8.8"]
+
+    # Specialized VM groups
+    vm_types:
+      children:
+        production_vms:
+          hosts:
+          vars:
+            vm_backup_schedule: "daily"
+            vm_monitoring: true
+
+        template_vms:
+          hosts:
+          vars:
+            vm_backup_schedule: "weekly"
+            vm_monitoring: false
+            vm_autostart: false
+
+        test_vms:
+          hosts:
+          vars:
+            vm_backup_schedule: "none"
+            vm_monitoring: false
+
+        docker_vms:
+          hosts:
+          vars:
+            vm_backup_schedule: "weekly"
+            vm_monitoring: true
+            cockpit_enabled: true
+
+        application_vms:
+          hosts:
+          vars:
+            vm_backup_schedule: "daily"
+            vm_monitoring: true
+
+  vars:
+    # Global variables for all hosts
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: ~/.ssh/cluster_key
+    ansible_python_interpreter: /usr/bin/python3
+
+    # Common Ubuntu 24.04 settings
+    os_family: "Ubuntu"
+    os_version: "24.04"
+
+    # Discovery metadata
+    vm_discovery_date: "2024-12-19"
+    total_discovered_vms: 20
+    sero_vm_count: 12
+    seli_vm_count: 8
+
+    # Load distribution analysis
+    # Note: SELI cluster shows load imbalance (all VMs on one node)
+    cluster_load_balanced: false
+    sero_load_balanced: true   # 6 VMs per node
+    seli_load_balanced: false  # 8 VMs on one node, 0 on other
+
+    # Common services
+    common_packages:
+      - cockpit
+      - cockpit-pcp
+      - cockpit-storaged
+      - cockpit-networkmanager
+      - pcs
+      - corosync
+      - pacemaker
+      - libvirt-daemon
+      - libvirt-clients
+      - qemu-kvm
+      - drbd-utils
+      - linstor-client
+      - linstor-satellite
+      - linstor-controller
+      - fence-agents-all
+      - lvm2
+      - thin-provisioning-tools
+
+    # Common network settings
+    cluster_port_corosync: 5405
+    cluster_port_pcsd: 2224
+    linstor_port: 3370
+    cockpit_port: 9090

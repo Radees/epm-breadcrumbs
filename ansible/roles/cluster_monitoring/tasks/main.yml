@@ -1,0 +1,20 @@
+---
+# Main tasks file for cluster_monitoring role
+
+- name: Include pre-installation checks
+  ansible.builtin.include_tasks: pre_checks.yml
+  tags:
+    - cluster_monitoring
+    - pre_checks
+
+- name: Include package installation
+  ansible.builtin.include_tasks: install.yml
+  tags:
+    - cluster_monitoring
+    - install
+
+- name: Include monitoring configuration
+  ansible.builtin.include_tasks: configure.yml
+  tags:
+    - cluster_monitoring
+    - configure

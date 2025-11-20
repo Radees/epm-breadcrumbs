@@ -1,0 +1,72 @@
+---
+    - name: Create directory for script
+      file:
+        path: /usr/local/bin
+        state: directory
+        mode: '0755'
+      become: true
+      become_user: root    
+    
+    - name:  Set nfs default values by nfsmount.conf  
+      copy:
+        dest: /etc/nfsmount.conf
+        src: nfsmount.conf
+        owner: root
+        group: root
+        mode: '0644'
+      become: true
+      become_user: root    
+    
+    - name: Install nisedit-automount-dump service
+      copy:
+        dest: /etc/systemd/system/nisedit-automount-dump.service
+        src: nisedit-automount-dump.service 
+        owner: root
+        group: root
+        mode: '0644'
+      become: true
+      become_user: root    
+    
+    - name: Install nisedit-automount-dump timer
+      copy:
+        dest: /etc/systemd/system/nisedit-automount-dump.timer
+        src: nisedit-automount-dump.timer
+        owner: root
+        group: root
+        mode: '0644'
+      become: true
+      become_user: root    
+    
+    - name: Create auto.master include line
+      lineinfile:
+        path: /etc/auto.master
+        line: "+auto.master"
+        state: present
+        backup: yes
+      register: automaster_updated
+      become: true
+      become_user: root    
+    
+    - name: Enable and start the timer
+      systemd:
+        name: nisedit-automount-dump.timer
+        enabled: yes
+        state: started
+        daemon_reload: yes
+      become: true
+      become_user: root    
+    
+    - name: Run the service once to generate initial files
+      systemd:
+        name: nisedit-automount-dump.service
+        state: started
+      become: true
+      become_user: root    
+    
+    - name: Restart autofs if auto.master was updated
+      service:
+        name: autofs
+        state: restarted
+      when: automaster_updated.changed
+      become: true
+      become_user: root    

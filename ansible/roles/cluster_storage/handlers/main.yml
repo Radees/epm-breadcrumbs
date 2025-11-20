@@ -1,0 +1,11 @@
+---
+# Handlers for cluster_storage role
+
+- name: reload lvm configuration
+  ansible.builtin.command: /usr/sbin/pvscan --cache
+  changed_when: false
+
+- name: restart lvm2-monitor
+  ansible.builtin.systemd:
+    name: lvm2-monitor
+    state: restarted

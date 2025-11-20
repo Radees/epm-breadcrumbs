@@ -1,0 +1,54 @@
+[all]
+
+[local]
+localhost ansible_connection=local
+
+[all:children]
+seli
+sero
+
+[cluster_nodes]
+# TODO: seli_vms are part of nodes via seli group what is not wanted
+[cluster_nodes:children]
+seli_nodes
+sero_nodes
+
+[seli]
+[seli:children]
+seli_vms
+seli_nodes
+monitoring
+
+[seli_nodes]
+seliics02501.seli.gic.ericsson.se 
+seliics02058.seli.gic.ericsson.se 
+
+[seli_vms]
+seliius20744.seli.gic.ericsson.se ansible_user=flexiadmin  # monitoring server    10.142.13.208
+seliius20737.seli.gic.ericsson.se ansible_user=flexiadmin  # Infra API Staging    10.142.13.202
+seliius20738.seli.gic.ericsson.se ansible_user=flexiadmin  # Infra API 2nd fabric 10.142.13.203
+seliius20740.seli.gic.ericsson.se ansible_user=flexiadmin  # EFA SELI Staging     10.142.13.205
+seliius20741.seli.gic.ericsson.se ansible_user=flexiadmin  # EFA 2nd fabric       10.142.13.206
+seliius20743.seli.gic.ericsson.se ansible_user=flexiadmin  # EFA SELI Prod        10.142.13.207
+seliius30745.seli.gic.ericsson.se ansible_user=flexiadmin  # Infra API SELI prod  10.142.13.209
+seliius30748.seli.gic.ericsson.se ansible_user=flexiadmin  # EFA pod 303          10.142.13.210
+seliius30749.seli.gic.ericsson.se ansible_user=flexiadmin  # Infra API pod 303    10.142.13.211
+seliius30750.seli.gic.ericsson.se ansible_user=flexiadmin  # NFS server for PFX   10.142.13.212
+seliius30753.seli.gic.ericsson.se ansible_user=flexiadmin  # Testing vir.machine  10.142.13.212
+seroius15014.sero.gic.ericsson.se ansible_user=flexiadmin  # infra API SERO xLab  10.236.148.228
+seroius15015.sero.gic.ericsson.se ansible_user=flexiadmin  # infra API SERO       10.236.148.229 
+
+[sero]
+[sero:children]
+sero_vms
+sero_nodes
+
+[sero_nodes]
+seroics02744.sero.gic.ericsson.se ansible_user=flexiadmin
+seroics95861.sero.gic.ericsson.se ansible_user=flexiadmin
+
+[sero_vms]
+seroius15016.sero.gic.ericsson.se ansible_user=flexiadmin  # efa sero prod
+
+[monitoring]
+seliius20744.seli.gic.ericsson.se ansible_user=flexiadmin ansible_become=true ansible_become_method=sudo

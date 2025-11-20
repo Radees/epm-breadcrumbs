@@ -1,0 +1,20 @@
+---
+# Main tasks file for cluster_storage role
+
+- name: Include pre-installation checks
+  ansible.builtin.include_tasks: pre_checks.yml
+  tags:
+    - cluster_storage
+    - pre_checks
+
+- name: Include package installation
+  ansible.builtin.include_tasks: install.yml
+  tags:
+    - cluster_storage
+    - install
+
+- name: Include storage configuration
+  ansible.builtin.include_tasks: configure.yml
+  tags:
+    - cluster_storage
+    - configure

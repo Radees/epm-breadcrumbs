@@ -1,0 +1,43 @@
+---
+- name: Get VM Info from Remote Host
+  hosts: remote_hosts
+  gather_facts: no
+  vars:
+    vmid: "my-vm"  # Change this or pass it as an extra variable
+
+  tasks:
+    - name: Copy Python script to remote host
+      copy:
+        src: get_vm_info.py
+        dest: /tmp/get_vm_info.py
+        mode: '0755'
+
+    - name: Run the script on remote host
+      command: python3 /tmp/get_vm_info.py {{ vmid }}
+      register: vm_output
+      changed_when: false
+
+    - name: Parse the JSON output
+      set_fact:
+        vm_info: "{{ vm_output.stdout | from_json }}"
+
+    - name: Print VM Info as Table
+      debug:
+        msg: |
+          +------------------+------------------------------------------------------+
+          | Field            | Value                                                |
+          +------------------+------------------------------------------------------+
+          | Name             | {{ vm_info.basic_info.Name }}                        |
+          | Description      | {{ vm_info.basic_info.Description }}                 |
+          | UUID             | {{ vm_info.basic_info.UUID }}                        |
+          | Memory (KiB)     | {{ vm_info.basic_info['Memory (KiB)'] }}             |
+          | Current Memory   | {{ vm_info.basic_info['Current Memory'] }}           |
+          | VCPUs            | {{ vm_info.basic_info.VCPUs }}                       |
+          {%- for disk in vm_info.disks %}
+          | Disk             | {{ disk }}                                           |
+          {%- endfor %}
+          {%- for net in vm_info.networks %}
+          | Network          | MAC: {{ net.MAC }}, Source: {{ net.Source }}         |
+          {%- endfor %}
+          +------------------+------------------------------------------------------+
+

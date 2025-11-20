@@ -1,0 +1,16 @@
+# 1. count interfaces up
+ip -br a l | grep UP | wc -l
+>>>
+29
+>>>= 0
+
+# 2. check bond-int type and ip
+ip -br a l type bond dev bond-int
+>>> /^.* 192.168.0.2\/30 .*$/
+>>>=0
+
+
+# 3. check bond-mgmt type and ip
+ip -br a l type bond dev bond-mgmt
+>>> /^.* 10.236.146.165\/27 .*$/
+>>>=0
