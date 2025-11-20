@@ -1,0 +1,25 @@
+---
+# Package installation for cluster_pacemaker role
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install Pacemaker and Corosync packages
+  ansible.builtin.apt:
+    name: "{{ cluster_pacemaker_packages }}"
+    state: present
+
+- name: Set hacluster user password
+  ansible.builtin.user:
+    name: hacluster
+    password: "{{ cluster_pacemaker_password | password_hash('sha512') }}"
+    state: present
+
+- name: Enable and start pcsd service
+  ansible.builtin.systemd:
+    name: pcsd
+    enabled: yes
+    state: started
+  when: cluster_pacemaker_enable_pcsd | bool

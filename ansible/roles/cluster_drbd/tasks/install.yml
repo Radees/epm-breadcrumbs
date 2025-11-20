@@ -1,0 +1,23 @@
+---
+# Package installation for cluster_drbd role
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install DRBD packages
+  ansible.builtin.apt:
+    name: "{{ cluster_drbd_packages }}"
+    state: present
+
+- name: Load DRBD kernel module
+  community.general.modprobe:
+    name: drbd
+    state: present
+
+- name: Ensure DRBD module loads on boot
+  ansible.builtin.lineinfile:
+    path: /etc/modules-load.d/drbd.conf
+    line: 'drbd'
+    create: yes

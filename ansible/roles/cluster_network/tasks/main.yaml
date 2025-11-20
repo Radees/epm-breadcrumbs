@@ -1,0 +1,10 @@
+---
+- name: Install a packages for AD auth
+  ansible.builtin.apt:
+    update_cache: true
+    pkg:
+      - krb5-config
+      - vasclnt
+      - vasyp  
+  become: true
+  become_user: root

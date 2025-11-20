@@ -1,0 +1,26 @@
+---
+# Pre-checks for cluster_vm role
+
+- name: Check if running on supported OS
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+      - ansible_distribution_version is version('20.04', '>=')
+    fail_msg: "This role requires Ubuntu 20.04 or later"
+    success_msg: "Running on supported Ubuntu version"
+
+- name: Check CPU virtualization support
+  ansible.builtin.command: kvm-ok
+  register: kvm_check
+  failed_when: false
+  changed_when: false
+
+- name: Display virtualization capability
+  ansible.builtin.debug:
+    msg: "KVM virtualization is {{ 'supported' if kvm_check.rc == 0 else 'not supported' }}"
+
+- name: Check for KVM module
+  ansible.builtin.command: lsmod | grep -i kvm
+  register: kvm_module
+  failed_when: false
+  changed_when: false

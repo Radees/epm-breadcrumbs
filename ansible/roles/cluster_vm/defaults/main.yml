@@ -1,0 +1,33 @@
+---
+# Default variables for cluster_vm role
+
+# Libvirt/KVM packages
+cluster_vm_packages:
+  - qemu-kvm
+  - libvirt-daemon
+  - libvirt-daemon-system
+  - libvirt-clients
+  - virtinst
+  - virt-manager
+  - bridge-utils
+  - cpu-checker
+
+# Libvirt configuration
+cluster_vm_libvirt_uri: "qemu:///system"
+cluster_vm_default_pool: "default"
+cluster_vm_default_network: "default"
+
+# VM storage location
+cluster_vm_storage_path: "/var/lib/libvirt/images"
+
+# User permissions
+cluster_vm_admin_users:
+  - ubuntu
+  - flexiserv
+
+# Enable nested virtualization
+cluster_vm_nested_virt: true
+
+# VM resource defaults
+cluster_vm_default_memory: 2048
+cluster_vm_default_vcpus: 2

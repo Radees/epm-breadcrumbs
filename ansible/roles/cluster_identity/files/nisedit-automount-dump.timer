@@ -1,0 +1,14 @@
+# /etc/systemd/system/nisedit-automount-dump.timer
+# This systemd timer file defines when the service will be triggered
+[Unit]
+Description=Run NIS automount dump every hour
+Requires=nisedit-automount-dump.service
+
+[Timer]
+Unit=nisedit-automount-dump.service
+OnBootSec=5min
+OnUnitActiveSec=1h
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

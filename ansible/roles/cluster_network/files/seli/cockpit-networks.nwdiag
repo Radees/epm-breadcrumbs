@@ -1,0 +1,10 @@
+nwdiag {
+  network mgmt {
+    address = "192.168.10.0/24";
+
+    // define group
+    group web {
+     cockpit-seli-1 [address = ".1"];
+     cockpit-seli-2 [address = ".2"];
+    }
+  }

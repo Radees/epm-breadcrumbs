@@ -1,0 +1,64 @@
+interfaces:
+  - eth0
+  - eth1
+  - eth2
+  - eth3
+  - eth4
+  - eth5
+  - eth6
+  - eth7
+
+bonds:
+  bond_mgmt:
+    interfaces: [eth0, eth1]
+  bond_pfx:
+    interfaces: [eth2, eth3]
+  bond_int:
+    interfaces: [eth4, eth5]
+  bond_gic:
+    interfaces: [eth6, eth7]
+
+vlans:
+  vlan_mgmt_100:
+    id: 100
+    bond: bond_mgmt
+    ip: 192.168.1.1
+  vlan_pfx_200:
+    id: 200
+    bond: bond_pfx
+    ip: 10.20.0.1
+  vlan_int_300:
+    id: 300
+    bond: bond_int
+    ip: 172.16.10.1
+  vlan_gic_400:
+    id: 400
+    bond: bond_gic
+    ip: 10.50.50.1
+
+bridges:
+  br_mgmt_100:
+    vlan: vlan_mgmt_100
+    ip: 192.168.1.2
+  br_pfx_200:
+    vlan: vlan_pfx_200
+    ip: 10.20.0.2
+  br_int_300:
+    vlan: vlan_int_300
+    ip: 172.16.10.2
+  br_gic_400:
+    vlan: vlan_gic_400
+    ip: 10.50.50.2
+
+default_gateway: 192.168.1.254
+
+bond_gateways:
+  bond_pfx: 10.20.0.254
+  bond_int: 172.16.10.254
+  bond_gic: 10.50.50.254
+
+subnet_cidrs:
+  bond_pfx: 10.20.0.0/16
+  bond_int: 172.16.10.0/16
+  bond_gic: 10.50.50.0/16
+

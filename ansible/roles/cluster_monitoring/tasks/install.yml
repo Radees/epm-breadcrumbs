@@ -1,0 +1,26 @@
+---
+# Package installation for cluster_monitoring role
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install monitoring packages
+  ansible.builtin.apt:
+    name: "{{ cluster_monitoring_packages }}"
+    state: present
+
+- name: Enable and start node_exporter
+  ansible.builtin.systemd:
+    name: prometheus-node-exporter
+    enabled: yes
+    state: started
+  when: cluster_monitoring_enable_node_exporter | bool
+
+- name: Enable and start sysstat
+  ansible.builtin.systemd:
+    name: sysstat
+    enabled: yes
+    state: started
+  when: cluster_monitoring_enable_sysstat | bool

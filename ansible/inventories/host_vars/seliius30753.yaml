@@ -1,0 +1,40 @@
+---
+# VM specifications
+vm_hostname: "seliius30753.seli.gic.ericsson.se"
+vm_name: "{{ vm_hostname.split('.')[0] }}_vm"
+vm_memory_mb: 16336
+vm_vcpus: 4
+vm_disk_size_gb: 50
+vm_disk_type: "device"  # Options: qcow2, raw, device (for direct device mapping)
+vm_device_path: "/dev/drbd/by-res/seliius30753_sda/0"  # Only used when vm_disk_type is 'device'
+
+# Cloud image settings
+cloud_image_url: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+cloud_image_name: "jammy-server-cloudimg-amd64.img"
+
+# NTP settings
+vm_ntp_servers:
+  - "lxntp1.{{ elocation }}.gic.ericsson.se"
+  - "lxntp2.{{ elocation }}.gic.ericsson.se"
+  - "lxntp3.{{ elocation }}.gic.ericsson.se"
+  - "lxntp4.{{ elocation }}.gic.ericsson.se"
+
+# Network settings
+bridge_interface: "br-gic317"  # Default libvirt bridge
+vm_ip_address: "10.142.13.215"
+vm_cidr_prefix: "27"  # CIDR notation (e.g., 24 for /24 or 255.255.255.0)
+vm_netmask: "255.255.255.224"
+vm_gateway: "10.142.13.192"
+
+vm_dns_servers: "193.181.14.24,193.181.14.25"
+vm_dns_search_domains: "sero.gic.ericsson.se seli.gic.ericsson.se gic.ericsson.se rnd.ericsson.se ericsson.se"  # Space-separated list of search domains
+
+# User settings
+vm_user: "flexiadmin"
+vm_password: "{{ ansible_password }}"    # You should use ansible-vault for real passwords
+vm_ssh_public_key: "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBH3XSaoxjJK2CD8MVVnze/hN9F9SBLQxvjBDmsxDx55fZ9LcrQc55P6UsC/rmgIWKfpxW6OYhBfbGXfnORZ7U6M= flexiserv@seliius22899"  # Replace with your actual SSH public key
+
+# HTTP server settings
+http_server_port: 8000
+http_server_dir: "/tmp/cloud-init-server"
+elocation: "{{ vm_hostname.split('.')[1] }}"

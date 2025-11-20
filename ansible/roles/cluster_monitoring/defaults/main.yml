@@ -1,0 +1,33 @@
+---
+# Default variables for cluster_monitoring role
+
+# Monitoring packages
+cluster_monitoring_packages:
+  - prometheus-node-exporter
+  - sysstat
+  - iotop
+  - htop
+  - iftop
+  - nmon
+
+# Monitoring tools to enable
+cluster_monitoring_enable_node_exporter: true
+cluster_monitoring_enable_sysstat: true
+
+# Node exporter configuration
+cluster_monitoring_node_exporter_port: 9100
+cluster_monitoring_node_exporter_options: ""
+
+# Sysstat collection interval (in seconds)
+cluster_monitoring_sysstat_interval: 600
+
+# Log monitoring
+cluster_monitoring_log_paths:
+  - /var/log/syslog
+  - /var/log/pacemaker/pacemaker.log
+  - /var/log/corosync/corosync.log
+  - /var/log/libvirt/libvirtd.log
+
+# Storage monitoring thresholds
+cluster_monitoring_storage_alert_threshold: 80
+cluster_monitoring_thin_pool_alert_threshold: 75

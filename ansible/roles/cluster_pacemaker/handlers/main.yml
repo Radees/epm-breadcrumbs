@@ -1,0 +1,22 @@
+---
+# Handlers for cluster_pacemaker role
+
+- name: restart pcsd
+  ansible.builtin.systemd:
+    name: pcsd
+    state: restarted
+
+- name: restart corosync
+  ansible.builtin.systemd:
+    name: corosync
+    state: restarted
+
+- name: restart pacemaker
+  ansible.builtin.systemd:
+    name: pacemaker
+    state: restarted
+
+- name: reload cluster configuration
+  ansible.builtin.command: pcs cluster cib-push --wait
+  failed_when: false
+  changed_when: false

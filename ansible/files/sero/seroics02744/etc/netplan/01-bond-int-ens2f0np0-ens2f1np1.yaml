@@ -1,0 +1,22 @@
+network:
+  version: 2
+  ethernets:
+    ens2f0np0:
+      optional: true
+      dhcp4: false
+      dhcp6: false
+    ens2f1np1:
+      optional: true
+      dhcp4: false
+      dhcp6: false
+  bonds:
+    bond-int:
+      addresses:
+      - 192.168.0.1/30
+      interfaces:
+      - ens2f0np0
+      - ens2f1np1
+      parameters:
+        mode: 802.3ad
+  vlans: {}
+  bridges: {}

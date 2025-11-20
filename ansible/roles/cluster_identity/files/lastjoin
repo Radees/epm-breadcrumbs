@@ -1,0 +1,2 @@
+#/etc/opt/quest/vas
+/opt/quest/bin/vastool -u gicinsadm@ericsson.se -k /etc/vasinst.key -d3 join -f -w -c OU=UNIX,OU=SELI,OU=SVC,OU=T006,OU=P018,OU=Tenant,OU=Data,DC=ericsson,DC=se -n seliics02501.seli.gic.ericsson.se ericsson.se eriseli03.ericsson.se eriseli04.ericsson.se

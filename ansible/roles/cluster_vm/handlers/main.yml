@@ -1,0 +1,14 @@
+---
+# Handlers for cluster_vm role
+
+- name: restart libvirtd
+  ansible.builtin.systemd:
+    name: libvirtd
+    state: restarted
+
+- name: reload kvm modules
+  ansible.builtin.shell: |
+    modprobe -r kvm_intel kvm_amd 2>/dev/null || true
+    modprobe kvm_intel 2>/dev/null || modprobe kvm_amd 2>/dev/null || true
+  failed_when: false
+  changed_when: false

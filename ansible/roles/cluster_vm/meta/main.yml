@@ -1,0 +1,26 @@
+---
+# Meta information for cluster_vm role
+
+galaxy_info:
+  role_name: cluster_vm
+  author: FlexiCluster Team
+  description: Manages libvirt/KVM virtualization for FlexiCluster
+  company: Ericsson
+  license: MIT-0
+  min_ansible_version: "2.7"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+  galaxy_tags:
+    - cluster
+    - virtualization
+    - kvm
+    - libvirt
+    - vm
+
+dependencies:
+  - role: cluster_base
+  - role: cluster_storage

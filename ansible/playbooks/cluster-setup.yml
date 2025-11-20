@@ -1,0 +1,15 @@
+---
+- name: Setup FlexiClusters Infrastructure
+  hosts: cluster_nodes
+  become: yes
+  roles:
+    - cluster_base         # Base OS configuration, users, common packages
+    - cluster_network      # Network bonds, VLANs, bridges
+    - cluster_storage      # LVM, thin pools
+    - cluster_drbd         # DRBD replication
+    - cluster_linstor      # LINSTOR storage orchestration
+    - cluster_pacemaker    # Pacemaker high-availability cluster
+    - cluster_vm           # Libvirt/KVM virtualization
+    - cluster_identity     # VAS/Active Directory authentication
+    - cluster_cockpit      # Cockpit web management interface
+    - cluster_monitoring   # Monitoring and metrics collection

@@ -1,0 +1,24 @@
+---
+# Package installation for cluster_storage role
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags:
+    - install
+
+- name: Install LVM and thin provisioning packages
+  ansible.builtin.apt:
+    name: "{{ cluster_storage_packages }}"
+    state: present
+  tags:
+    - install
+
+- name: Ensure LVM services are enabled
+  ansible.builtin.systemd:
+    name: lvm2-monitor
+    enabled: yes
+    state: started
+  tags:
+    - install

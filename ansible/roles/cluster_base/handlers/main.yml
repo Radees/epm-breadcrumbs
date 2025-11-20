@@ -1,0 +1,12 @@
+#SPDX-License-Identifier: MIT-0
+---
+# Handlers for cluster_base role
+
+- name: update timezone
+  ansible.builtin.command: timedatectl status
+  changed_when: false
+
+- name: restart systemd-timesyncd
+  ansible.builtin.systemd:
+    name: systemd-timesyncd
+    state: restarted

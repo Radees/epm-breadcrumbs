@@ -1,0 +1,24 @@
+---
+# Pacemaker configuration tasks
+
+- name: Check if cluster is already configured
+  ansible.builtin.command: pcs status
+  register: pcs_status
+  failed_when: false
+  changed_when: false
+
+- name: Display cluster configuration message
+  ansible.builtin.debug:
+    msg: "Pacemaker cluster {{ 'is already configured' if pcs_status.rc == 0 else 'needs manual configuration' }}"
+
+- name: Display cluster setup instructions
+  ansible.builtin.debug:
+    msg:
+      - "To create a new cluster, run on one node:"
+      - "pcs host auth {{ cluster_pacemaker_nodes | map(attribute='name') | join(' ') }} -u hacluster -p {{ cluster_pacemaker_password }}"
+      - "pcs cluster setup {{ cluster_pacemaker_cluster_name }} {{ cluster_pacemaker_nodes | map(attribute='name') | join(' ') }}"
+      - "pcs cluster start --all"
+      - "pcs cluster enable --all"
+  when:
+    - pcs_status.rc != 0
+    - cluster_pacemaker_nodes | length > 0

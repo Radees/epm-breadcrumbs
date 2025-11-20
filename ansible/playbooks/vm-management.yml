@@ -1,0 +1,9 @@
+---
+- name: Manage Virtual Machines
+  hosts: cluster_nodes
+  become: yes
+  vars_files:
+    - ../vars/vm_configs.yml
+  tasks:
+    - name: Include VM management tasks
+      include_tasks: ../roles/libvirt/tasks/vm_management.yml

@@ -1,0 +1,8 @@
+/etc/krb5.conf
+/etc/opt/quest/vas/user-override
+/etc/opt/quest/vas/users.deny
+/etc/opt/quest/vas/group-override
+/etc/opt/quest/vas/vas.conf
+/etc/opt/quest/vas/users.allow
+/etc/opt/quest/vas/lastjoin
+/etc/vasinst.key

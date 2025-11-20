@@ -1,0 +1,26 @@
+---
+# Meta information for cluster_pacemaker role
+
+galaxy_info:
+  role_name: cluster_pacemaker
+  author: FlexiCluster Team
+  description: Manages Pacemaker high-availability cluster for FlexiCluster
+  company: Ericsson
+  license: MIT-0
+  min_ansible_version: "2.7"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+  galaxy_tags:
+    - cluster
+    - pacemaker
+    - corosync
+    - ha
+    - high-availability
+
+dependencies:
+  - role: cluster_base
+  - role: cluster_network

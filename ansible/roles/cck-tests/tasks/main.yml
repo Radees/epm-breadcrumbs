@@ -1,0 +1,6 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for cck-tests
+ - name: show templating results
+   ansible.builtin.debug:
+       msg: "{{ lookup('ansible.builtin.template', 'vas-join-cmd.j2') }}"

@@ -1,0 +1,30 @@
+---
+# Monitoring configuration tasks
+
+- name: Configure sysstat data collection interval
+  ansible.builtin.lineinfile:
+    path: /etc/default/sysstat
+    regexp: '^ENABLED='
+    line: 'ENABLED="true"'
+  notify: restart sysstat
+  when: cluster_monitoring_enable_sysstat | bool
+
+- name: Configure sysstat collection interval
+  ansible.builtin.lineinfile:
+    path: /etc/cron.d/sysstat
+    regexp: '^\*/\d+ \* \* \* \* root'
+    line: "*/{{ cluster_monitoring_sysstat_interval / 60 | int }} * * * * root /usr/lib/sysstat/debian-sa1 1 1"
+  when: cluster_monitoring_enable_sysstat | bool
+
+- name: Create monitoring scripts directory
+  ansible.builtin.file:
+    path: /usr/local/bin/cluster-monitoring
+    state: directory
+    mode: '0755'
+
+- name: Display monitoring endpoints
+  ansible.builtin.debug:
+    msg:
+      - "Node exporter metrics available at: http://{{ ansible_default_ipv4.address }}:{{ cluster_monitoring_node_exporter_port }}/metrics"
+      - "Sysstat reports available via: sar command"
+      - "Monitoring tools installed: {{ cluster_monitoring_packages | join(', ') }}"

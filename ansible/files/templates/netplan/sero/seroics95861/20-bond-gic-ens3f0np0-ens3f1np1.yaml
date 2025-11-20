@@ -1,0 +1,67 @@
+network:
+  version: 2
+  ethernets:
+    ens3f0np0:
+      optional: true
+      dhcp4: false
+      dhcp6: false
+    ens3f1np1:
+      optional: true
+      dhcp4: false
+      dhcp6: false
+  bonds:
+    bond-gic:
+      interfaces:
+      - ens3f0np0
+      - ens3f1np1
+      parameters:
+        mode: 802.3ad
+  vlans:
+    bond-gic.101:
+      link: bond-gic
+      id: 101
+    bond-gic.102:
+      link: bond-gic
+      id: 102
+    bond-gic.125:
+      link: bond-gic
+      id: 125
+  bridges:
+    br-gic101:
+      addresses:
+      - 10.236.148.197/27
+      interfaces:
+      - bond-gic.101
+      routes:
+      - table: 101
+        to: 0.0.0.0/0
+        via: 10.236.148.193
+      routing-policy:
+      - table: 101
+        from: 10.236.148.192/27
+    br-gic102:
+      addresses:
+      - 10.236.148.229/27
+      interfaces:
+      - bond-gic.102
+      routes:
+      - table: 102
+        to: 0.0.0.0/0
+        via: 10.236.148.225
+      routing-policy:
+      - table: 102
+        from: 10.236.148.224/27
+      - table: 102
+        to: 150.132.5.70/32
+    br-gic125:
+      addresses:
+      - 100.79.23.165/28
+      interfaces:
+      - bond-gic.125
+      routes:
+      - table: 125
+        to: 0.0.0.0/0
+        via: 100.79.23.161
+      routing-policy:
+      - table: 125
+        from: 100.79.23.160/27

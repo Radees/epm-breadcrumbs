@@ -1,0 +1,3 @@
+# This file is managed by Puppet. DO NOT EDIT.
+# eis-custom-lxgen.seli.gic.ericsson.se
+deb http://lxgen.seli.gic.ericsson.se/eisrepo/ubuntu/22.04 /

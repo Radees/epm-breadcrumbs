@@ -1,0 +1,12 @@
+---
+# VM CD-ROM eject utility
+# Based on the provided playbook
+
+- name: Identify and eject CD-ROM from VM
+  hosts: "{{ target_hosts | default('cluster_nodes') }}"
+  become: yes
+  vars:
+    vm_name: "{{ vm_name | default('') }}"
+  tasks:
+    - name: Include CD-ROM eject tasks
+      include_tasks: ../roles/libvirt/tasks/cdrom_eject.yml

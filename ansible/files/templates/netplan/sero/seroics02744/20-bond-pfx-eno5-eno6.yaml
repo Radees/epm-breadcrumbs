@@ -1,0 +1,87 @@
+network:
+  version: 2
+  ethernets:
+    eno5:
+      dhcp4: false
+      dhcp6: false
+      mtu: 9000
+    eno6:
+      dhcp4: false
+      dhcp6: false
+      mtu: 9000
+  bonds:
+    bond-pfx:
+      interfaces:
+      - eno5
+      - eno6
+      parameters:
+        mode: 802.3ad
+      mtu: 9000
+  vlans:
+    bond-pfx.4:
+      link: bond-pfx
+      id: 4
+    bond-pfx.2:
+      link: bond-pfx
+      id: 2
+      mtu: 9000
+    bond-pfx.3:
+      link: bond-pfx
+      id: 3
+      mtu: 9000
+    bond-pfx.10:
+      link: bond-pfx
+      id: 10
+  bridges:
+    br-pfx4:
+      addresses:
+      - 10.237.176.5/29
+      interfaces:
+      - bond-pfx.4
+      routes:
+      - table: 4
+        to: 0.0.0.0/0
+        via: 10.237.176.1
+      routing-policy:
+      - table: 4
+        to: 10.237.176.0/29
+      - table: 4
+        from: 10.237.176.0/29
+    br-pfx2:
+      addresses:
+      - 21.0.16.5/26
+      interfaces:
+      - bond-pfx.2
+      mtu: 9000
+      routes:
+      - table: 2
+        to: 0.0.0.0/0
+        via: 21.0.16.1
+      routing-policy:
+      - table: 2
+        from: 21.0.16.0/26
+    br-pfx3:
+      addresses:
+      - 21.0.16.69/26
+      interfaces:
+      - bond-pfx.3
+      mtu: 9000
+      routes:
+      - table: 3
+        to: 0.0.0.0/0
+        via: 21.0.16.65
+      routing-policy:
+      - table: 3
+        from: 21.0.16.64/26
+    br-pfx10:
+      addresses:
+      - 10.9.110.137/26
+      interfaces:
+      - bond-pfx.10
+      routes:
+      - table: 10
+        to: 0.0.0.0/0
+        via: 10.9.110.129
+      routing-policy:
+      - table: 10
+        from: 10.9.110.128/26

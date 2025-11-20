@@ -1,0 +1,28 @@
+---
+# Pre-checks for cluster_pacemaker role
+
+- name: Check if running on supported OS
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+      - ansible_distribution_version is version('20.04', '>=')
+    fail_msg: "This role requires Ubuntu 20.04 or later"
+    success_msg: "Running on supported Ubuntu version"
+
+- name: Verify cluster nodes are defined
+  ansible.builtin.assert:
+    that:
+      - cluster_pacemaker_nodes | length >= 2
+    fail_msg: "At least 2 cluster nodes must be defined"
+    success_msg: "Cluster nodes are properly defined"
+  when: cluster_pacemaker_nodes | length > 0
+
+- name: Check network connectivity between nodes
+  ansible.builtin.wait_for:
+    host: "{{ item.ip }}"
+    port: 22
+    timeout: 10
+  loop: "{{ cluster_pacemaker_nodes }}"
+  when:
+    - cluster_pacemaker_nodes | length > 0
+    - item.name != ansible_hostname

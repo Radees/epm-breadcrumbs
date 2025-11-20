@@ -1,0 +1,40 @@
+#SPDX-License-Identifier: MIT-0
+---
+# Default variables for cluster_base role
+
+# Cluster location (sero, seli, etc.)
+cluster_base_location: "{{ elocation | default('sero') }}"
+
+# Sudoers configuration
+cluster_base_sudoers:
+  - name: flexiserv
+    user: flexiserv
+    commands: ALL
+    nopassword: true
+  - name: flexilabinfra
+    group: flexilabinfra
+    commands: ALL
+    nopassword: true
+
+# Common system packages
+cluster_base_common_packages:
+  - vim
+  - htop
+  - net-tools
+  - curl
+  - wget
+  - rsync
+  - tmux
+
+# NFS mount configuration (disabled by default)
+cluster_base_enable_nfs_mount: false
+cluster_base_nfs_server: "seliisproj01005.seli.gic.ericsson.se"
+cluster_base_nfs_path: "/proj011678/flexilab"
+cluster_base_nfs_mount_point: "/proj/flexilab"
+
+# System configuration
+cluster_base_timezone: "UTC"
+cluster_base_enable_firewall: false
+
+# SSH configuration
+cluster_base_ssh_key_path: "~/.ssh/cluster_key"

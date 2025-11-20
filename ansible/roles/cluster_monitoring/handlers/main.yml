@@ -1,0 +1,12 @@
+---
+# Handlers for cluster_monitoring role
+
+- name: restart node-exporter
+  ansible.builtin.systemd:
+    name: prometheus-node-exporter
+    state: restarted
+
+- name: restart sysstat
+  ansible.builtin.systemd:
+    name: sysstat
+    state: restarted

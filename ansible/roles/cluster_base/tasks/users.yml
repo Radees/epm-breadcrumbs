@@ -1,0 +1,25 @@
+#SPDX-License-Identifier: MIT-0
+---
+# User and permissions configuration
+
+- name: Configure sudoers for users
+  community.general.sudoers:
+    name: "{{ item.name }}"
+    user: "{{ item.user | default(omit) }}"
+    group: "{{ item.group | default(omit) }}"
+    commands: "{{ item.commands }}"
+    nopassword: "{{ item.nopassword | default(true) }}"
+  loop: "{{ cluster_base_sudoers }}"
+  become: true
+  become_user: root
+
+- name: Mount NFS volume for /proj/flexilab
+  ansible.posix.mount:
+    src: "{{ cluster_base_nfs_server }}:{{ cluster_base_nfs_path }}"
+    path: "{{ cluster_base_nfs_mount_point }}"
+    opts: rw,relatime,vers=3,rsize=65536,wsize=65536,namlen=255,hard,proto=tcp,timeo=600,retrans=2
+    state: mounted
+    fstype: nfs
+  become: true
+  become_user: root
+  when: cluster_base_enable_nfs_mount | bool
